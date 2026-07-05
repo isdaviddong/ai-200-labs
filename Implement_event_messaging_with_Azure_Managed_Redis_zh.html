@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<title>
+            在 Azure Managed Redis 中發佈與訂閱事件 | 在 Microsoft Azure 上開發 AI 雲端解決方案
+        </title>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"/>
+<link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet"/>
+<link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" rel="stylesheet"/>
+<link href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/vs.min.css" rel="stylesheet"/>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<link href="/mslearn-azure-ai/assets/css/style.css?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47" rel="stylesheet"/>
+</head>
+<body data-spy="scroll" data-target="#linksMenu"><div style="background:#1a73e8;color:white;padding:10px;text-align:center;font-family:sans-serif">⚠️ 此為繁體中文翻譯版，程式碼與專有名詞保留英文原文</div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-gray">
+<div class="container d-flex justify-content-between">
+<!-- <img src="https://github.com/MicrosoftLearning/Jekyll-Theme/raw/master/assets/microsoft-gray.png" alt="Microsoft logo" style="width:100px;height:21px;"/>-->
+<span class="my-1 title text-black">在 Microsoft Azure 上開發 AI 雲端解決方案</span>
+<span class="ml-2">
+<a class="d-flex align-items-center" href="https://microsoftlearning.github.io/mslearn-azure-ai">
+<svg class="bi bi-house-door-fill" fill="currentColor" height="16" viewbox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5"></path>
+</svg>
+                     Home
+                </a>
+</span>
+</div>
+<!--
+        <div class="container d-flex justify-content-between">
+            <a class="my-1 title text-azure text-uppercase" href="https://microsoftlearning.github.io/mslearn-azure-ai">
+                Develop AI Cloud Solutions on Microsoft Azure
+            </a>
+            <a href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank" class="btn btn-sm btn-outline-secondary text-light">
+                <i class="fa fa-github" aria-hidden="true"></i>
+                <span class="ml-2">GitHub</span>
+            </a>
+        </div>
+        -->
+</nav>
+<hr color-"gray"=""/>
+<div class="container">
+<main class="row extra-padding">
+<aside class="col-sm-2">
+<nav class="toc sticky-top" id="linksMenu">
+<ul class="nav navbar-nav flex-column">
+</ul>
+</nav>
+</aside>
+<hr class=""/>
+<article class="col-sm-10 mb-5">
+<h1 id="publish-and-subscribe-to-events-in-azure-managed-redis">在 Azure Managed Redis 中發佈與訂閱事件</h1>
+<p>在本練習中，您將建立 Azure Managed Redis 資源，並完成一個以主控台為基礎的發佈者應用程式與訂閱者應用程式的程式碼。發佈者應用程式會將事件訊息傳送到 Redis 通道，而訂閱者應用程式則會使用以 <strong>tkinter</strong>建置的圖形介面來接收這些訊息。您將實作核心的 pub/sub 模式，包括直接通道訂閱、萬用字元模式比對、訊息格式化，以及背景訊息接聽。</p>
+<p>本練習將執行的工作：</p>
+<ul>
+<li>下載專案起始檔案</li>
+<li>建立 Azure Managed Redis 資源</li>
+<li>加入程式碼以完成發佈者與訂閱者應用程式</li>
+<li>執行發佈者與訂閱者應用程式以傳送與接收訊息</li>
+</ul>
+<p>本練習約需 <strong>30</strong> 分鐘完成。</p>
+<h2 id="before-you-start">開始之前</h2>
+<p>若要完成本練習，您需要：</p>
+<ul>
+<li>Azure 訂用帳戶。如果您尚未擁有，您可以 <a href="https://azure.microsoft.com/">註冊一個</a>。</li>
+<li><a href="https://code.visualstudio.com/">Visual Studio Code</a> 安裝於其中一個 <a href="https://code.visualstudio.com/docs/supporting/requirements#_platforms">支援的平台</a>。</li>
+<li><a href="https://www.python.org/downloads/">Python 3.12</a> 或更新版本。</li>
+<li>最新版的 <a href="https://learn.microsoft.com/cli/azure/install-azure-cli">Azure CLI</a>。</li>
+<li>Azure CLI 的 <strong>redisenterprise</strong> 延伸模組。您可以執行 <strong>az extension add --name redisenterprise</strong> 命令來安裝它。</li>
+</ul>
+<h2 id="download-project-starter-files-and-deploy-azure-managed-redis">下載專案起始檔案並部署 Azure Managed Redis</h2>
+<p>在本節中，您將下載主控台應用程式的起始檔案，並使用指令碼初始化將 Azure Managed Redis 部署到您的訂用帳戶。Azure Managed Redis 的部署需要 5 到 10 分鐘才能完成。</p>
+<ol>
+<li>
+<p>開啟瀏覽器並輸入下列 URL 以下載起始檔案。該檔案會儲存在您的預設下載位置。</p>
+<pre><code>https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/amr-pub-sub-python.zip
+</code></pre></li>
+<li>
+<p>將該檔案複製或移動到系統中您想要進行專案作業的位置，然後將它解壓縮到資料夾中。</p>
+</li>
+<li>
+<p>啟動 Visual Studio Code (VS Code)，並在選單中選取 <strong>File &gt; Open Folder...</strong> ，然後選擇包含專案檔案的資料夾。</p>
+</li>
+<li>
+<p>此專案同時包含 Bash（<em>azdeploy.sh</em>）與 PowerShell（<em>azdeploy.ps1</em>）的部署指令碼。開啟適合您環境的檔案，並變更指令碼頂端的兩個值以符合您的需求，然後儲存變更。 <strong>Note:</strong> 請勿變更指令碼中的其他任何內容。</p>
+<pre><code>"&lt;your-resource-group-name&gt;" # Resource Group name
+"&lt;your-azure-region&gt;" # Azure region for the resources
+</code></pre></li>
+<li>
+<p>在功能表列中選取 <strong>Terminal &gt; New Terminal</strong> ，以在 VS Code 中開啟終端機視窗。</p>
+</li>
+<li>
+<p>執行下列命令登入您的 Azure 帳戶。依照提示選取要用於本練習的 Azure 帳戶與訂用帳戶。</p>
+<pre><code>az login
+</code></pre></li>
+<li>
+<p>執行下列命令，確認您的訂用帳戶具有 Azure Managed Redis 所需的資源提供者。</p>
+<pre><code>az provider register --namespace Microsoft.Cache
+</code></pre></li>
+<li>
+<p>執行下列命令以安裝 <strong>redisenterprise</strong> 的 Azure CLI 延伸模組。</p>
+<pre><code>az extension add --name redisenterprise
+</code></pre></li>
+<li>
+<p>在終端機中執行適當的命令以啟動指令碼。</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>Note:</strong> 如果 PowerShell 因指令碼未經數位簽章而封鎖它，請在同一個終端機工作階段中執行下列命令，然後再次執行部署指令碼。此命令只會變更目前 PowerShell 處理程序的執行原則。</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>當指令碼執行時，輸入 <strong>1</strong> 以啟動 <strong>1. Create Azure Managed Redis resource</strong> 選項。</p>
+<p>此選項會在資源群組尚不存在時建立它，並開始部署 Azure Managed Redis。此程序會在 Azure 中以背景工作方式完成。</p>
+</li>
+<li>
+<p>當主控台中出現下列訊息後，選取 <strong>Enter</strong> 以返回選單，然後選取 <strong>4</strong> 以結束指令碼。稍後您會再次執行此指令碼，以檢查部署狀態並建立 <em>.env</em> 專案所需的檔案。</p>
+<p><em>Azure Managed Redis 資源正在建立中，通常需要 5 到 10 分鐘才能完成。</em></p>
+<p><em>您可以在稍後的練習中從選單檢查部署狀態。</em></p>
+</li>
+</ol>
+<h2 id="configure-the-python-environment">設定 Python 環境</h2>
+<p>在本節中，您將建立 Python 環境並安裝相依性。</p>
+<ol>
+<li>
+<p>在 VS Code 終端機中執行下列命令以建立 Python 環境。</p>
+<pre><code>python -m venv .venv
+</code></pre></li>
+<li>
+<p>執行下列命令以啟用 Python 環境。 <strong>Note:</strong> 在 Linux/macOS 上，請使用 Bash 命令。在 Windows 上，請使用 PowerShell 命令。如果是在 Windows 上使用 Git Bash，請使用 <strong>source .venv/Scripts/activate</strong>。</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> .venv/bin/activate
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">\.venv\Scripts\Activate.ps1</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>在 VS Code 終端機中執行下列命令以安裝相依性。</p>
+<pre><code>pip install -r requirements.txt
+</code></pre></li>
+</ol>
+<h2 id="complete-the-publisher-app">完成發佈者應用程式</h2>
+<p>在本節中，您將程式碼加入 <em>publisher.py</em> 指令碼以完成主控台應用程式。您會在稍後完成 <em>subscriber.py</em> 指令碼並建立 <em>.env</em> 檔案，之後再執行此應用程式。</p>
+<ol>
+<li>開啟 <em>publisher.py</em> 檔案以開始加入程式碼。</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> 您加入到應用程式中的程式碼區塊應與該段程式碼的註解對齊。</p>
+</blockquote>
+<h3 id="add-the-client-connection">加入用戶端連線</h3>
+<p>在本節中，您將加入程式碼，使用 redis-py 函式庫建立與 Azure Managed Redis 的連線。這段程式碼會從環境變數擷取連線認證，並建立已設定為安全 SSL 通訊的 Redis 用戶端執行個體。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN CONNECTION CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">connect_to_redis</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">:</span>
+    <span class="s">"""Establish connection to Azure Managed Redis using SSL encryption and authentication"""</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">redis_host</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_HOST"</span><span class="p">)</span>
+        <span class="n">redis_key</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_KEY"</span><span class="p">)</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">(</span>
+            <span class="n">host</span><span class="o">=</span><span class="n">redis_host</span><span class="p">,</span>
+            <span class="n">port</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+            <span class="n">ssl</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="n">decode_responses</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="n">password</span><span class="o">=</span><span class="n">redis_key</span><span class="p">,</span>
+            <span class="n">socket_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="n">socket_connect_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Test connection
+</span>        <span class="n">r</span><span class="p">.</span><span class="n">ping</span><span class="p">()</span>  <span class="c1"># Verify Redis connectivity
+</span>        <span class="k">return</span> <span class="n">r</span>
+
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="nb">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Connection error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Check if Redis host and port are correct, and ensure network connectivity"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="n">AuthenticationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Authentication error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Make sure the access key is correct"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Unexpected error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-the-publish-message-code">加入發佈訊息的程式碼</h3>
+<p>在本節中，您將加入程式碼，使用 <strong>publish()</strong> 方法將事件訊息發佈到特定的 Redis 通道。發佈者會傳送包含訂單資訊等事件資料的 JSON 格式訊息。每次呼叫 <strong>publish()</strong> 都會回傳收到該訊息的有效訂閱者數量，讓您可以確認訊息已成功傳遞。這就是 pub/sub 模式的核心：發佈者不需要知道個別訂閱者的詳細資訊。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN PUBLISH MESSAGE CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">publish_order_created</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="s">"""Publish an order created event using r.publish() to the 'orders:created' channel"""</span>
+    <span class="n">clear_screen</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Publishing: Order Created Event"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="n">order_data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">"event"</span><span class="p">:</span> <span class="s">"order_created"</span><span class="p">,</span>
+        <span class="s">"order_id"</span><span class="p">:</span> <span class="sa">f</span><span class="s">"ORD-</span><span class="si">{</span><span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">'%Y%m%d%H%M%S'</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">,</span>
+        <span class="s">"customer"</span><span class="p">:</span> <span class="s">"Jane Doe"</span><span class="p">,</span>
+        <span class="s">"total"</span><span class="p">:</span> <span class="mf">129.99</span><span class="p">,</span>
+        <span class="s">"timestamp"</span><span class="p">:</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+    <span class="n">channel</span> <span class="o">=</span> <span class="s">"orders:created"</span>
+
+    <span class="c1"># Publish message and get subscriber count
+</span>    <span class="n">subscribers</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">publish</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>  <span class="c1"># Send message to channel, returns number of subscribers that received it
+</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[&gt;] Published to channel: '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[#] Active subscribers: </span><span class="si">{</span><span class="n">subscribers</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[i] Message content:"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">order_data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="nb">input</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">[+] Press Enter to continue..."</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-the-broadcast-message-code">加入廣播訊息的程式碼</h3>
+<p>在本節中，您將加入程式碼，使用搭配 <strong>publish()</strong>的迴圈，將相同訊息同時廣播到多個通道。廣播適用於系統範圍公告，或需要傳達給不同通道訂閱者的事件。這示範了 pub/sub 一對多訊息傳遞的能力，單一訊息可即時且有效率地傳送給多個通道中所有感興趣的訂閱者。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN BROADCAST CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">broadcast_to_all</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="s">"""Broadcast a message to all channels using r.publish() in a loop for multi-channel delivery"""</span>
+    <span class="n">clear_screen</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Broadcasting: System Announcement"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="n">announcement</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">"event"</span><span class="p">:</span> <span class="s">"system_announcement"</span><span class="p">,</span>
+        <span class="s">"message"</span><span class="p">:</span> <span class="s">"System maintenance scheduled for 2 AM"</span><span class="p">,</span>
+        <span class="s">"priority"</span><span class="p">:</span> <span class="s">"high"</span><span class="p">,</span>
+        <span class="s">"timestamp"</span><span class="p">:</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="s">"orders:created"</span><span class="p">,</span> <span class="s">"orders:shipped"</span><span class="p">,</span> <span class="s">"inventory:alerts"</span><span class="p">,</span> <span class="s">"notifications"</span><span class="p">]</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">announcement</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[&gt;] Broadcasting to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="s"> channels..."</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"Channels: </span><span class="si">{</span><span class="s">', '</span><span class="p">.</span><span class="n">join</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+
+    <span class="n">total_subscribers</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">publish</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>  <span class="c1"># Send same message to multiple channels
+</span>        <span class="n">total_subscribers</span> <span class="o">+=</span> <span class="n">count</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"  - </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s"> subscriber(s)"</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[#] Total subscribers reached: </span><span class="si">{</span><span class="n">total_subscribers</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[i] Message content:"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">announcement</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="nb">input</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">[+] Press Enter to continue..."</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="review-the-code">檢閱程式碼</h3>
+<p>花幾分鐘檢閱應用程式中的所有程式碼。</p>
+<h2 id="complete-the-subscriber-app">完成訂閱者應用程式</h2>
+<p>在本節中，您將程式碼加入 <em>subscriber.py</em> 指令碼以完成應用程式。您會在稍後確認 Azure Managed Redis 資源已完全部署並建立 <strong>.env</strong> 檔案後，再執行此應用程式。</p>
+<ol>
+<li>開啟 <em>subscriber.py</em> 檔案以開始加入程式碼。</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> 您加入到應用程式中的程式碼區塊應與該段程式碼的註解對齊。</p>
+</blockquote>
+<h3 id="add-message-formatting-code">加入訊息格式化程式碼</h3>
+<p>在本節中，您將加入程式碼，格式化傳入的 pub/sub 訊息，以便在訂閱者應用程式中顯示。 <strong>format_message_gui()</strong> 函式會解析已發佈訊息中的 JSON 承載，並根據事件類型擷取相關欄位。此函式同時處理標準通道訊息與模式比對訊息，提供一致且易讀的顯示格式，方便理解透過 pub/sub 系統傳輸的資料內容。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN MESSAGE FORMATTING CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">format_message_gui</span><span class="p">(</span><span class="n">message_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Format message data for GUI display, parsing JSON payload and extracting relevant fields"""</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">"%H:%M:%S"</span><span class="p">)</span>
+    <span class="n">channel</span> <span class="o">=</span> <span class="n">message_data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'channel'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message_data</span><span class="p">[</span><span class="s">'data'</span><span class="p">])</span>
+        <span class="n">event_type</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'event'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+
+        <span class="n">formatted</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Message on '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'</span><span class="se">\n</span><span class="s">"</span>
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'─'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Event: </span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+
+        <span class="c1"># Display relevant fields based on event type
+</span>        <span class="k">if</span> <span class="s">'order_id'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Order ID: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'order_id'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'customer'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Customer: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'customer'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'total'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Total: $</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'total'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'tracking_number'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Tracking: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'tracking_number'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'product_name'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Product: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'product_name'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'current_stock'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Stock Level: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'current_stock'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'message'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Message: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'message'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'─'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">return</span> <span class="n">formatted</span>
+
+    <span class="k">except</span> <span class="n">json</span><span class="p">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">message_data</span><span class="p">[</span><span class="s">'data'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更</p>
+</li>
+</ol>
+<h3 id="add-the-message-listener-code">加入訊息接聽程式碼</h3>
+<p>在本節中，您將加入背景接聽執行緒的程式碼，用來持續監視已訂閱通道中的傳入訊息。 <strong>listen_messages()</strong> 方法會使用具阻塞性的 <strong>pubsub.listen()</strong> 迭代器在訊息發佈時接收訊息。這示範了訂閱者如何被動等待訊息，並處理不同類型的訊息（直接通道訊息與模式比對訊息）。接聽器會在背景執行緒中運作，以避免阻塞主要應用程式，同時仍能接收即時訊息更新。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN MESSAGE LISTENER CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">listen_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s">"""Background thread to listen for messages using pubsub.listen() blocking iterator"""</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">listener_active</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">listen</span><span class="p">():</span>  <span class="c1"># Listen for published messages (blocking)
+</span>            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="p">.</span><span class="n">listening</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s">'type'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'message'</span><span class="p">:</span>
+                <span class="n">formatted</span> <span class="o">=</span> <span class="n">format_message_gui</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="n">formatted</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="s">'type'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'pmessage'</span><span class="p">:</span>
+                <span class="c1"># Pattern-based subscription
+</span>                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">"%H:%M:%S"</span><span class="p">)</span>
+                <span class="n">pattern</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="s">'pattern'</span><span class="p">]</span>
+                <span class="n">channel</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="s">'channel'</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s">'data'</span><span class="p">])</span>
+                    <span class="n">event_type</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'event'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Pattern '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">' matched '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'-'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Event: </span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Full message: </span><span class="si">{</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'-'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">json</span><span class="p">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Pattern '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">': </span><span class="si">{</span><span class="n">message</span><span class="p">[</span><span class="s">'data'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">.</span><span class="n">listening</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Listener error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">listener_active</span> <span class="o">=</span> <span class="bp">False</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-code-to-subscribe-to-channels">加入訂閱通道的程式碼</h3>
+<p>在本節中，您將加入程式碼來處理通道與模式訂閱。<strong>subscribe_to_channel()</strong> 方法會使用 <strong>pubsub.subscribe()</strong> 來註冊對特定通道的興趣，而 <strong>subscribe_to_pattern()</strong> 則使用 <strong>pubsub.psubscribe()</strong> 進行萬用字元模式比對（例如 <strong>orders:*</strong>）。這些函式示範了 Redis pub/sub 的兩種主要訂閱策略：針對特定事件的直接通道訂閱，以及具有彈性的模式型訂閱。完成訂閱後，接聽器會重新啟動，開始接收新通道上的訊息。</p>
+<ol>
+<li>
+<p>尋找 <strong># BEGIN SUBSCRIBE CHANNEL/PATTERN CODE SECTION</strong> 註解，並在該註解下方加入下列程式碼。請務必確認程式碼縮排正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">subscribe_to_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Subscribe to a specific channel using pubsub.subscribe() for direct messaging"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>  <span class="c1"># Subscribe to channel
+</span>        <span class="bp">self</span><span class="p">.</span><span class="n">restart_listener</span><span class="p">()</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[+] Subscribed to channel: '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[x] Error subscribing: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+
+<span class="k">def</span> <span class="nf">subscribe_to_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Subscribe using a pattern with pubsub.psubscribe() for wildcard channel matching (e.g., 'orders:*')"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">psubscribe</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>  <span class="c1"># Subscribe to pattern (e.g., 'orders:*')
+</span>        <span class="bp">self</span><span class="p">.</span><span class="n">restart_listener</span><span class="p">()</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[+] Subscribed to pattern: '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">'"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[x] Error subscribing: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="review-the-code-1">檢閱程式碼</h3>
+<p>花幾分鐘檢閱應用程式中的所有程式碼。</p>
+<h2 id="verify-resource-deployment">驗證資源部署</h2>
+<p>在本節中，您將再次執行部署指令碼，以確認 Azure Managed Redis 部署是否完成，並建立 <em>.env</em> 檔案，其中包含端點與存取金鑰值。</p>
+<ol>
+<li>
+<p>在終端機中執行適當的命令以啟動部署指令碼。如果您已關閉先前的終端機，請選取 <strong>Terminal &gt; New Terminal</strong> 以在選單中開啟新的終端機。</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>Note:</strong> 如果 PowerShell 因指令碼未經數位簽章而封鎖它，請在同一個終端機工作階段中執行下列命令，然後再次執行部署指令碼。此命令只會變更目前 PowerShell 處理程序的執行原則。</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>當部署選單出現時，輸入 <strong>2</strong> 以執行 <strong>2. Check deployment status</strong> 選項。如果狀態顯示為 <strong>Successful</strong>，請繼續下一步。若否，請等待幾分鐘後再試一次此選項。</p>
+</li>
+<li>
+<p>部署完成後，輸入 <strong>3</strong> 以執行 <strong>3. Create database and retrieve endpoint and access key</strong> 選項。這會建立資料庫、啟用存取金鑰驗證，並擷取端點與存取金鑰。接著它會建立包含這些值的 <em>.env</em> 檔案。</p>
+</li>
+<li>
+<p>檢閱 <em>.env</em> 檔案以確認值已存在，然後輸入 <strong>4</strong> 以結束部署指令碼。</p>
+</li>
+</ol>
+<h2 id="run-the-apps">執行應用程式</h2>
+<p>在本節中，您將執行已完成的應用程式來傳送與接收訊息。兩個應用程式需要同時執行，因此您必須開啟兩個終端機。這兩個應用程式都採用選單驅動，而 <em>subscriber.py</em> 應用程式則使用 <strong>tkinter</strong> 建立 GUI，讓您更容易查看訊息並管理訂閱。</p>
+<h3 id="open-two-terminals">開啟兩個終端機</h3>
+<p>您需要確認兩個終端機中都已啟用 Python 環境。如有需要，請參考本練習稍早的命令來啟用環境。</p>
+<ol>
+<li>
+<p>如果您目前沒有開啟的終端機，請選取 <strong>Terminal &gt; New Terminal</strong> 於 VS Code 功能表列中。確認您位於專案根資料夾中，並在需要時啟用 Python 環境。此終端機在本練習其餘部分中稱為 <strong>Terminal 1</strong> 。</p>
+</li>
+<li>
+<p>選取 <strong>Ctrl + Shift + P</strong> 以叫出 VS Code 命令，然後輸入 <strong>Terminal: New Terminal Window</strong>。這會在新視窗中開啟一個可重新定位的終端機。確認您位於專案根資料夾中，並在需要時啟用 Python 環境。此終端機在本練習其餘部分中稱為 <strong>Terminal 2</strong> 。</p>
+</li>
+</ol>
+<h3 id="launch-the-apps">啟動應用程式</h3>
+<ol>
+<li>
+<p>在 <strong>Terminal 2</strong> 中執行下列命令以啟動發佈者應用程式。當應用程式連線到 Redis 後，按下 <strong>Enter</strong> 以顯示選單。如有需要，請參考稍早練習中的命令先啟用環境，再執行此命令。</p>
+<pre><code>python publisher.py
+</code></pre></li>
+<li>
+<p>在 <strong>Terminal 1</strong> 中執行下列命令以啟動訂閱者應用程式。該應用程式會啟動一個使用 <strong>tkinter</strong> 建立 GUI 的新視窗。如有需要，請參考稍早練習中的命令先啟用環境，再執行此命令。</p>
+<pre><code>python subscriber.py
+</code></pre></li>
+<li>
+<p>請將兩個應用程式並排放置執行。</p>
+<p><img alt="Screenshot of the apps running side-by-side" src="/mslearn-azure-ai/instructions/azure-managed-redis/media/apps-side-by-side.png"/></p>
+</li>
+</ol>
+<h3 id="send-and-receive-messages">傳送與接收訊息</h3>
+<p>您必須先訂閱通道，之後才能接收訊息。</p>
+<ol>
+<li>
+<p>在訂閱者應用程式中，選取 <strong>Subscribe to Channel</strong>。輸入 <strong>orders:created</strong> 到通道名稱輸入方塊中，然後選取 <strong>Subscribe</strong>。</p>
+<p>您應該會在 <strong>Received Messages</strong> 區域中看到 <em>Subscribed to channel: 'orders:created'</em> 訊息。接下來請發佈一則訊息。</p>
+</li>
+<li>
+<p>在發佈者應用程式中，輸入 <strong>1</strong> 以發佈訂單建立事件。您應該會看到事件已成功發佈到通道。</p>
+<pre><code>[&gt;] Published to channel: 'orders:created'
+[#] Active subscribers: 1
+
+[i] Message content:
+{
+  "event": "order_created",
+  "order_id": "ORD-20251120123114",
+  "customer": "Jane Doe",
+  "total": 129.99,
+  "timestamp": "2025-11-20T12:31:14.906797"
+}
+</code></pre>
+<p>訊息應會出現在訂閱者應用程式的 <strong>Received Messages</strong> 區段中。</p>
+<pre><code>[12:31:14] Message on 'orders:created'
+──────────────────────────────────────────────────
+Event: order_created
+Order ID: ORD-20251120123114
+Customer: Jane Doe
+Total: $129.99
+──────────────────────────────────────────────────
+</code></pre></li>
+<li>
+<p>在發佈者應用程式中，輸入 <strong>2</strong> 以發佈 <strong>Order Shipped</strong> 事件。事件會被送出，但不會出現在訂閱者應用程式中，因為您只訂閱了 <strong>orders:created</strong> 通道。</p>
+</li>
+</ol>
+<h3 id="experiment-with-other-subscriptionpublishing-options">試驗其他訂閱/發佈選項</h3>
+<p>花一些時間試著訂閱不同通道並發佈訊息。以下表格列出各個訂閱者選項的詳細說明：</p>
+<table>
+<thead>
+<tr>
+<th>訂閱者選項</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscribe to Channel</td>
+<td>訂閱單一通道。通道選項會列在對話方塊中。</td>
+</tr>
+<tr>
+<td>Subscribe with Pattern</td>
+<td>訂閱多個通道。例如，使用 <strong>orders:*</strong> 模式會訂閱所有 <strong>orders</strong> 通道。</td>
+</tr>
+<tr>
+<td>Unsubscribe from Channel</td>
+<td>取消訂閱單一通道。注意：您無法使用此選項取消模式型訂閱。</td>
+</tr>
+<tr>
+<td>Unsubscribe All</td>
+<td>取消訂閱所有通道，包括模式型訂閱。</td>
+</tr>
+<tr>
+<td>View Active Subscriptions</td>
+<td>列出所有已訂閱的通道，包括模式型訂閱。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="clean-up-resources">清除資源</h2>
+<p>既然您已完成本練習，應刪除所建立的雲端資源，以避免不必要的資源使用。</p>
+<ol>
+<li>
+<p>在 VS Code 終端機中執行下列命令以刪除資源群組及群組中的所有資源。請將 <strong>&lt;rg-name&gt;</strong> 替換為您稍早在練習中選擇的名稱。此命令會在 Azure 中啟動背景工作以刪除資源群組。</p>
+<pre><code>az group delete --name &lt;rg-name&gt; --no-wait --yes
+</code></pre></li>
+</ol>
+<blockquote>
+<p><strong>CAUTION:</strong> 刪除資源群組會刪除其中包含的所有資源。如果您為本練習選用了現有的資源群組，則此練習範圍外的任何既有資源也會一併刪除。</p>
+</blockquote>
+<h2 id="troubleshooting">疑難排解</h2>
+<p>如果您在完成本練習時遇到問題，請嘗試下列疑難排解步驟：</p>
+<p><strong>驗證 Azure Managed Redis 資源部署</strong></p>
+<ul>
+<li>瀏覽至 <a href="https://portal.azure.com">Azure portal</a> 並找出您的資源群組。</li>
+<li>確認 Azure Managed Redis 資源顯示的 <strong>Provisioning State</strong> 為 <strong>Succeeded</strong>。</li>
+<li>確認資源已啟用 <strong>Public network access</strong> ，且 <strong>Access keys authentication</strong> 設為 <strong>Enabled</strong>。</li>
+</ul>
+<p><strong>檢查程式碼完整性與縮排</strong></p>
+<ul>
+<li>確認所有程式碼區塊都已加入正確區段，並位於對應的 BEGIN/END 註解標記之間。</li>
+<li>確認 Python 縮排一致（使用空格，不使用 Tab），且所有程式碼在函式內都正確對齊。</li>
+<li>確認在指定區段之外沒有任何程式碼被意外刪除或修改。</li>
+</ul>
+<p><strong>驗證環境變數</strong></p>
+<ul>
+<li>確認 <em>.env</em> 檔案存在於專案資料夾中，且包含有效的 <strong>REDIS_HOST</strong> 與 <strong>REDIS_KEY</strong> 值。</li>
+<li>確認 <em>.env</em> 檔案位於專案根目錄中。</li>
+</ul>
+<p><strong>檢查 Python 環境與相依性</strong></p>
+<ul>
+<li>確認在執行應用程式前已啟用虛擬環境。</li>
+<li>確認 <em>requirements.txt</em> 中的所有套件都已成功安裝，可執行 <strong>pip list</strong>。</li>
+</ul>
+</article>
+</main>
+</div>
+<footer class="fixed-bottom d-print-none">
+<nav class="navbar navbar-light bg-light d-flex justify-content-around">
+<span class="navbar-text">
+                © 2025 Microsoft  | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=521839">隱私權 </a> | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=2259814">消費者健康隱私權 </a> | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkID=206977">使用條款 </a> | 
+                  <a href="https://www.microsoft.com/trademarks">商標 </a> | 
+                <i aria-hidden="true" class="fa fa-github"></i>
+<a class="ml-2" href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank">
+                    原始檔
+                </a>
+</span>
+</nav>
+</footer>
+<script crossorigin="anonymous" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script src="/mslearn-azure-ai/assets/js/script.js?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47"></script>
+</body>
+</html>
+

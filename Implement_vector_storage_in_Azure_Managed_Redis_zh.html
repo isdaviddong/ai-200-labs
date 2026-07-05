@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<title>
+            在 Azure Managed Redis 中實作語意搜尋 | 
+            
+            在 Microsoft Azure 上開發 AI 雲端解決方案
+        </title>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"/>
+<link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet"/>
+<link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" rel="stylesheet"/>
+<link href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/vs.min.css" rel="stylesheet"/>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<link href="/mslearn-azure-ai/assets/css/style.css?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47" rel="stylesheet"/>
+</head>
+<body data-spy="scroll" data-target="#linksMenu">
+<div style="background:#1a73e8;color:white;padding:10px;text-align:center;font-family:sans-serif">⚠️ 此為繁體中文翻譯版，程式碼與專有名詞保留英文原文</div>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-gray">
+<div class="container d-flex justify-content-between">
+<!-- <img src="https://github.com/MicrosoftLearning/Jekyll-Theme/raw/master/assets/microsoft-gray.png" alt="Microsoft logo" style="width:100px;height:21px;"/>-->
+<span class="my-1 title text-black">在 Microsoft Azure 上開發 AI 雲端解決方案</span>
+<span class="ml-2">
+<a class="d-flex align-items-center" href="https://microsoftlearning.github.io/mslearn-azure-ai">
+<svg class="bi bi-house-door-fill" fill="currentColor" height="16" viewbox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5"></path>
+</svg>
+                     Home
+                </a>
+</span>
+</div>
+<!--
+        <div class="container d-flex justify-content-between">
+            <a class="my-1 title text-azure text-uppercase" href="https://microsoftlearning.github.io/mslearn-azure-ai">
+                Develop AI Cloud Solutions on Microsoft Azure
+            </a>
+            <a href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank" class="btn btn-sm btn-outline-secondary text-light">
+                <i class="fa fa-github" aria-hidden="true"></i>
+                <span class="ml-2">GitHub</span>
+            </a>
+        </div>
+        -->
+</nav>
+<hr color-=""/>
+<div class="container">
+<main class="row extra-padding">
+<aside class="col-sm-2">
+<nav class="toc sticky-top" id="linksMenu">
+<ul class="nav navbar-nav flex-column">
+</ul>
+</nav>
+</aside>
+<hr class=""/>
+<article class="col-sm-10 mb-5">
+<h1 id="implement-semantic-search-in-azure-managed-redis">在 Azure Managed Redis 中實作語意搜尋</h1>
+<p>在此練習中，您將建立 Azure Managed Redis 資源，並完成向量儲存應用程式的程式碼。此應用程式會載入含有嵌入的範例產品資料、儲存包含向量嵌入與中繼資料的新產品、使用向量嵌入執行語意相似度搜尋，並根據餘弦相似度顯示相關產品。您將實作核心向量作業，包括將向量與中繼資料一起儲存為二進位資料、建立採用 HNSW 演算法設定的 RediSearch 索引，以及執行 KNN 查詢來尋找語意上相似的產品。</p>
+<p>此練習中執行的工作：</p>
+<ul>
+<li>下載專案起始檔案</li>
+<li>建立 Azure Managed Redis 資源</li>
+<li>加入程式碼以完成商務邏輯</li>
+<li>執行應用程式以載入範例資料、儲存含嵌入的產品，並執行相似度搜尋</li>
+</ul>
+<p>此練習大約需要 <strong>30</strong> 分鐘完成。</p>
+<h2 id="before-you-start">開始之前</h2>
+<p>若要完成本練習，您需要：</p>
+<ul>
+<li>具備建立 Enterprise SKU Azure Managed Redis 執行個體權限的 Azure 訂用帳戶。若您尚未擁有，可 <a href="https://azure.microsoft.com/">註冊一個</a>.</li>
+<li>
+<a href="https://code.visualstudio.com/">Visual Studio Code</a> 安裝於其中一個 <a href="https://code.visualstudio.com/docs/supporting/requirements#_platforms">支援的平台</a>.</li>
+<li>
+<a href="https://www.python.org/downloads/">Python 3.12</a> 或更新版本。</li>
+<li>最新版的 <a href="https://learn.microsoft.com/cli/azure/install-azure-cli">Azure CLI</a>.</li>
+<li>The Azure CLI <strong>redisenterprise</strong> 延伸模組。您可以執行 <strong>az extension add --name redisenterprise</strong> 命令來安裝它。</li>
+</ul>
+<h2 id="download-project-starter-files-and-deploy-azure-managed-redis">下載專案起始檔案並部署 Azure Managed Redis</h2>
+<p>在本節中，您將下載應用程式的起始檔案，並使用指令碼初始化將 Azure Managed Redis 部署到您的訂用帳戶。Azure Managed Redis 部署約需 5 到 10 分鐘完成。</p>
+<ol>
+<li>
+<p>開啟瀏覽器並輸入下列 URL 以下載入門檔案。檔案會儲存在您的預設下載位置。</p>
+<pre><code>https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/amr-vector-query-python.zip
+</code></pre>
+</li>
+<li>
+<p>將檔案複製或移動到您系統中要進行專案作業的位置，然後將其解壓縮到資料夾中。</p>
+</li>
+<li>
+<p>啟動 Visual Studio Code (VS Code)，並選取 <strong>File &gt; Open Folder...</strong> ，然後選擇包含專案檔案的資料夾。</p>
+</li>
+<li>
+<p>此專案包含 Bash（<em>azdeploy.sh</em>）與 PowerShell（<em>azdeploy.ps1</em>). Open the appropriate file for your environment and change the two values at the top of script to meet your needs, then save your changes. <strong>注意：</strong> 請勿變更指令碼中的其他任何內容。</p>
+<pre><code>"&lt;your-resource-group-name&gt;" # Resource Group name
+"&lt;your-azure-region&gt;" # Azure region for the resources
+</code></pre>
+</li>
+<li>
+<p>在功能表列中選取 <strong>Terminal &gt; New Terminal</strong> ，在 VS Code 中開啟終端機視窗。</p>
+</li>
+<li>
+<p>執行下列命令登入您的 Azure 帳戶。依提示選取此練習要使用的 Azure 帳戶與訂用帳戶。</p>
+<pre><code>az login
+</code></pre>
+</li>
+<li>
+<p>執行下列命令以確保您的訂用帳戶具有 Azure Managed Redis 所需的資源提供者。</p>
+<pre><code>az provider register --namespace Microsoft.Cache
+</code></pre>
+</li>
+<li>
+<p>執行下列命令以安裝 <strong>redisenterprise</strong> 的 Azure CLI 延伸模組。</p>
+<pre><code>az extension add --name redisenterprise
+</code></pre>
+</li>
+<li>
+<p>在終端機中執行適當的命令以啟動指令碼。</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>注意：</strong> 如果 PowerShell 因指令碼未經數位簽署而封鎖它，請在相同的終端機工作階段中執行下列命令，然後再次執行部署指令碼。此命令只會變更目前 PowerShell 處理序的執行原則。</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>當指令碼執行時，輸入 <strong>1</strong> 以啟動 <strong>1. Create Azure Managed Redis resource</strong> option.</p>
+<p>此選項會在資源群組尚不存在時建立它，並開始部署 Azure Managed Redis。此程序會在 Azure 中以背景工作方式完成。</p>
+</li>
+<li>
+<p>當主控台出現下列訊息後，選取 <strong>輸入</strong> 以返回功能表，然後選取 <strong>4</strong> 以離開指令碼。稍後您會再次執行此指令碼，以檢查部署狀態並建立專案的 <em>.env</em> 檔案。</p>
+<p><em>Azure Managed Redis 資源正在建立中，約需 5 到 10 分鐘完成。</em></p>
+<p><em>您可以在本練習稍後從功能表中檢查部署狀態。</em></p>
+</li>
+</ol>
+<h2 id="configure-the-python-environment">設定 Python 環境</h2>
+<p>在本節中，您將建立 Python 環境並安裝相依性。</p>
+<ol>
+<li>
+<p>在 VS Code 終端機中執行下列命令以建立 Python 環境。</p>
+<pre><code>python -m venv .venv
+</code></pre>
+</li>
+<li>
+<p>執行下列命令以啟用 Python 環境。 <strong>注意：</strong> 在 Linux/macOS 上，請使用 Bash 命令。在 Windows 上，請使用 PowerShell 命令。若在 Windows 上使用 Git Bash，請使用 <strong>source .venv/Scripts/activate</strong>.</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> .venv/bin/activate
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">\.venv\Scripts\Activate.ps1</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>在 VS Code 終端機中執行下列命令以安裝相依性。</p>
+<pre><code>pip install -r requirements.txt
+</code></pre>
+</li>
+</ol>
+<h2 id="complete-the-manage-vector-app">完成 manage vector 應用程式</h2>
+<p>在本節中，您會將程式碼加入 <em>manage_vector.py</em> 指令碼以完成應用程式。稍後在本練習中，當您確認 Azure Managed Redis 資源已完全部署並建立 <em>.env</em> file.</p>
+<ol>
+<li>開啟 <em>manage_vector.py</em> 檔案以開始加入程式碼。</li>
+</ol>
+<blockquote>
+<p><strong>注意：</strong> 您加入應用程式的程式碼區塊應與該程式碼區段的註解相對應。</p>
+</blockquote>
+<h3 id="add-the-initialization-and-connection-code">加入初始化與連線程式碼</h3>
+<p>在本節中，您將加入程式碼，使用 redis-py 建立與 Azure Managed Redis 的連線。 <strong>_connect_to_redis()</strong> 函式會使用 redis-py 的 <strong>Redis</strong> 類別建立具驗證功能的安全 SSL 連線。 <strong>init()</strong> 方法會初始化用於語意搜尋作業的向量索引。</p>
+<ol>
+<li>
+<p>找到 <strong># BEGIN INITIALIZATION AND CONNECTION CODE SECTION</strong> 註解，並在其下方加入下列程式碼。請務必確認程式碼對齊正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s">"""Initialize the product manager and establish Redis connection"""</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">_connect_to_redis</span><span class="p">()</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">_create_vector_index</span><span class="p">()</span>  <span class="c1"># Create RediSearch index for product embeddings
+</span>    <span class="bp">self</span><span class="p">.</span><span class="n">VECTOR_DIM</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># Product embedding dimensionality (matches sample_data.json)
+</span>
+<span class="k">def</span> <span class="nf">_connect_to_redis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">:</span>
+    <span class="s">"""Establish connection to Azure Managed Redis using SSL encryption and authentication"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Get connection parameters from environment variables
+</span>        <span class="n">redis_host</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_HOST"</span><span class="p">)</span>
+        <span class="n">redis_key</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_KEY"</span><span class="p">)</span>
+
+        <span class="c1"># Create Redis connection with SSL and authentication
+</span>        <span class="n">r</span> <span class="o">=</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">(</span>
+            <span class="n">host</span><span class="o">=</span><span class="n">redis_host</span><span class="p">,</span>
+            <span class="n">port</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># Azure Managed Redis uses port 10000
+</span>            <span class="n">ssl</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>  <span class="c1"># Use SSL encryption
+</span>            <span class="n">decode_responses</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>  <span class="c1"># Keep binary for embeddings - only decode text when needed
+</span>            <span class="n">password</span><span class="o">=</span><span class="n">redis_key</span><span class="p">,</span>  <span class="c1"># Authentication key
+</span>            <span class="n">db</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># Connect to database 0 (the default database with RediSearch module)
+</span>            <span class="n">socket_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>  <span class="c1"># Connection timeout
+</span>            <span class="n">socket_connect_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>  <span class="c1"># Socket timeout
+</span>        <span class="p">)</span>
+
+        <span class="c1"># Test connection
+</span>        <span class="n">r</span><span class="p">.</span><span class="n">ping</span><span class="p">()</span>  <span class="c1"># Verify Redis connectivity
+</span>        <span class="k">return</span> <span class="n">r</span>
+
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="nb">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Connection error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="n">AuthenticationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Authentication error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Unexpected error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-the-create-vector-index-code">加入建立向量索引的程式碼</h3>
+<p>在本節中，您將加入程式碼，使用 redis-py 搜尋模組建立用於向量相似度搜尋的 RediSearch 索引。 <strong>_create_vector_index()</strong> 函式會定義結構描述，其中包含文字欄位以及設定為 HNSW（Hierarchical Navigable Small World）索引並採用餘弦相似度的 VectorField，藉此支援高效率的語意搜尋作業。</p>
+<ol>
+<li>
+<p>找到 <strong># BEGIN CREATE VECTOR INDEX CODE SECTION</strong> 註解，並在其下方加入下列程式碼。請務必確認程式碼對齊正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">_create_vector_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s">"""Create a RediSearch index for product semantic search using HNSW algorithm"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Define schema with embedding field for HNSW-based product similarity search
+</span>        <span class="c1"># DIM=8 matches our sample data dimensions (in production, this would match your embedding model's output)
+</span>        <span class="n">schema</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">TextField</span><span class="p">(</span><span class="s">"name"</span><span class="p">),</span>
+            <span class="n">TextField</span><span class="p">(</span><span class="s">"category"</span><span class="p">),</span>
+            <span class="n">TextField</span><span class="p">(</span><span class="s">"product_id"</span><span class="p">),</span>
+            <span class="n">VectorField</span><span class="p">(</span>
+                <span class="s">"embedding"</span><span class="p">,</span>
+                <span class="s">"HNSW"</span><span class="p">,</span>  <span class="c1"># Hierarchical Navigable Small World - fast approximate search
+</span>                <span class="p">{</span>
+                    <span class="s">"TYPE"</span><span class="p">:</span> <span class="s">"FLOAT32"</span><span class="p">,</span>           <span class="c1"># Standard for embeddings
+</span>                    <span class="s">"DIM"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>                    <span class="c1"># Must match embedding dimensions in sample_data.json
+</span>                    <span class="s">"DISTANCE_METRIC"</span><span class="p">:</span> <span class="s">"COSINE"</span>  <span class="c1"># Cosine similarity for semantic search
+</span>                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create index on hash keys starting with "product:"
+</span>        <span class="n">definition</span> <span class="o">=</span> <span class="n">IndexDefinition</span><span class="p">(</span>
+            <span class="n">prefix</span><span class="o">=</span><span class="p">[</span><span class="s">"product:"</span><span class="p">],</span>
+            <span class="n">index_type</span><span class="o">=</span><span class="n">IndexType</span><span class="p">.</span><span class="n">HASH</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">r</span><span class="p">.</span><span class="n">ft</span><span class="p">(</span><span class="s">"idx:products"</span><span class="p">).</span><span class="n">create_index</span><span class="p">(</span>
+            <span class="n">fields</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
+            <span class="n">definition</span><span class="o">=</span><span class="n">definition</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="n">ResponseError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s">"already exists"</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">pass</span>  <span class="c1"># Index already exists, which is fine
+</span>        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Error creating vector index: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Error creating vector index: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-the-store-product-code">加入儲存產品的程式碼</h3>
+<p>在本節中，您將加入程式碼，使用 Redis 儲存包含向量嵌入與中繼資料的產品。 <strong>store_product()</strong> 函式會使用 numpy 將嵌入陣列轉換為二進位 float32 位元組，然後使用 redis-py 的 <strong>hset()</strong> 方法將二進位嵌入與中繼資料欄位儲存在 Redis 雜湊結構中。此作法可有效率地儲存與擷取向量資料。</p>
+<ol>
+<li>
+<p>找到 <strong># BEGIN STORE PRODUCT CODE SECTION</strong> 註解，並在其下方加入下列程式碼。請務必確認程式碼對齊正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">store_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+    <span class="s">"""Store a product with embedding in Redis using hash data structure with binary embedding storage"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Convert embedding to binary bytes using numpy for efficient storage
+</span>        <span class="c1"># This follows redis-py best practices for storing embeddings
+</span>        <span class="n">embedding</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">array</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s">"embedding"</span><span class="p">:</span> <span class="n">embedding</span><span class="p">.</span><span class="n">tobytes</span><span class="p">()}</span>  <span class="c1"># Store embedding as binary bytes
+</span>
+        <span class="c1"># Add metadata fields to the hash
+</span>        <span class="k">if</span> <span class="n">metadata</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Store the hash in Redis using hset() method
+</span>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">r</span><span class="p">.</span><span class="n">hset</span><span class="p">(</span><span class="n">vector_key</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">result</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="sa">f</span><span class="s">"Product stored successfully under key '</span><span class="si">{</span><span class="n">vector_key</span><span class="si">}</span><span class="s">'"</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="sa">f</span><span class="s">"Product updated successfully under key '</span><span class="si">{</span><span class="n">vector_key</span><span class="si">}</span><span class="s">'"</span>
+
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="sa">f</span><span class="s">"Error storing product: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="add-the-search-similar-products-vector-code">加入搜尋相似產品的向量程式碼</h3>
+<p>在本節中，您將加入程式碼，使用 RediSearch 搭配 redis-py 用戶端執行向量相似度搜尋。 <strong>search_similar_products()</strong> 函式會使用 numpy 將查詢向量轉換為二進位 float32 位元組，接著對 RediSearch 索引執行 KNN（k-nearest neighbors）查詢，以根據嵌入的餘弦相似度找出最相似的產品。</p>
+<ol>
+<li>
+<p>找到 <strong># BEGIN SEARCH SIMILAR PRODUCTS CODE SECTION</strong> 註解，並在其下方加入下列程式碼。請務必確認程式碼對齊正確。</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">search_similar_products</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_vector</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">top_k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">list</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]:</span>
+    <span class="s">"""Search for products similar to the query vector using RediSearch KNN queries"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Convert query vector to binary bytes for KNN search
+</span>        <span class="n">query_bytes</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="n">array</span><span class="p">(</span><span class="n">query_vector</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="p">.</span><span class="n">float32</span><span class="p">).</span><span class="n">tobytes</span><span class="p">()</span>
+
+        <span class="c1"># Build KNN query using RediSearch vector search syntax for semantic similarity
+</span>        <span class="c1"># *=&gt;[KNN k @field_name $query_vec] finds k most similar products based on embedding distance
+</span>        <span class="n">knn_query</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Query</span><span class="p">(</span><span class="sa">f</span><span class="s">"*=&gt;[KNN </span><span class="si">{</span><span class="n">top_k</span><span class="si">}</span><span class="s"> @embedding $query_vec AS score]"</span><span class="p">)</span>
+            <span class="p">.</span><span class="n">return_fields</span><span class="p">(</span><span class="s">"name"</span><span class="p">,</span> <span class="s">"category"</span><span class="p">,</span> <span class="s">"product_id"</span><span class="p">,</span> <span class="s">"score"</span><span class="p">)</span>
+            <span class="p">.</span><span class="n">sort_by</span><span class="p">(</span><span class="s">"score"</span><span class="p">)</span>
+            <span class="p">.</span><span class="n">dialect</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Dialect 2 enables vector search syntax
+</span>        <span class="p">)</span>
+
+        <span class="c1"># Execute KNN search with query vector as parameter
+</span>        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">r</span><span class="p">.</span><span class="n">ft</span><span class="p">(</span><span class="s">"idx:products"</span><span class="p">).</span><span class="n">search</span><span class="p">(</span>
+            <span class="n">knn_query</span><span class="p">,</span>
+            <span class="n">query_params</span><span class="o">=</span><span class="p">{</span><span class="s">"query_vec"</span><span class="p">:</span> <span class="n">query_bytes</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">results</span><span class="p">.</span><span class="n">total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="s">"No products found in Redis. Ensure products are loaded and RediSearch module is enabled."</span>
+
+        <span class="c1"># Format results
+</span>        <span class="n">similarities</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">results</span><span class="p">.</span><span class="n">docs</span><span class="p">:</span>
+            <span class="n">similarities</span><span class="p">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s">"key"</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="nb">id</span><span class="p">,</span>
+                <span class="s">"similarity"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">score</span><span class="p">),</span>
+                <span class="s">"product_id"</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="n">product_id</span><span class="p">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">product_id</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">doc</span><span class="p">.</span><span class="n">product_id</span><span class="p">,</span>
+                <span class="s">"name"</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="n">name</span><span class="p">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">doc</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s">"category"</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="n">category</span><span class="p">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">category</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">doc</span><span class="p">.</span><span class="n">category</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="n">similarities</span>
+
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="sa">f</span><span class="s">"Error searching products: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>儲存您的變更。</p>
+</li>
+</ol>
+<h3 id="review-the-code">檢閱程式碼</h3>
+<p>花幾分鐘檢閱 <em>manage_vector.py</em> file.</p>
+<h2 id="verify-resource-deployment">驗證資源部署</h2>
+<p>在本節中，您將再次執行部署指令碼，以確認 Azure Managed Redis 部署是否完成，並建立包含端點與存取金鑰值的 <em>.env</em> 檔案。</p>
+<ol>
+<li>
+<p>在終端機中執行適當的命令以啟動部署指令碼。若您已關閉先前的終端機，請選取 <strong>Terminal &gt; New Terminal</strong> ，以在選單中開啟新的終端機。</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>注意：</strong> 如果 PowerShell 因指令碼未經數位簽署而封鎖它，請在相同的終端機工作階段中執行下列命令，然後再次執行部署指令碼。此命令只會變更目前 PowerShell 處理序的執行原則。</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>當部署功能表出現時，輸入 <strong>2</strong> to run the <strong>2. Check deployment status</strong> 選項。若狀態顯示 <strong>Successful</strong>，請繼續下一步。否則請稍候幾分鐘後再試一次此選項。</p>
+</li>
+<li>
+<p>部署完成後，輸入 <strong>3</strong> to run the <strong>3. Create database and retrieve endpoint and access key</strong> 選項。這會建立包含 RediSearch 模組的資料庫、啟用存取金鑰驗證，並擷取端點與存取金鑰。接著它會建立包含這些值的 <em>.env</em> file with those values.</p>
+</li>
+<li>
+<p>檢查 <em>.env</em> 檔案以確認值已存在，然後輸入 <strong>4</strong> 以結束部署指令碼。</p>
+</li>
+</ol>
+<h2 id="run-the-app">執行應用程式</h2>
+<p>在本節中，您將執行完成的應用程式，並練習載入、儲存與搜尋向量資料。應用程式使用 <strong>tkinter</strong> 建立 GUI，讓您更容易檢視與管理資料。</p>
+<ol>
+<li>
+<p>在終端機中執行下列命令以啟動應用程式。若有需要，請先參考本練習稍早的命令來啟用環境，再執行此命令。</p>
+<pre><code>python vectorapp.py
+</code></pre>
+<p>應用程式應與下圖類似：</p>
+<p><img alt="Screenshot of the vector app running." src="/mslearn-azure-ai/instructions/azure-managed-redis/media/vector-app.png"/></p>
+</li>
+</ol>
+<blockquote>
+<p><strong>注意：</strong> 本節中的所有步驟都在應用程式中執行。</p>
+</blockquote>
+<h3 id="load-sample-data-and-perform-a-similarity-search">載入範例資料並執行相似度搜尋</h3>
+<p>在本節中，您將練習把範例向量資料載入 Redis，然後執行相似度搜尋。您會練習擷取已知向量，並將其作為查詢，用來在資料庫中找出語意相關的產品。</p>
+<ol>
+<li>
+<p>選取 <strong>Load Sample Products</strong>。載入作業的狀態會顯示在 <strong>Operation Results</strong>.</p>
+</li>
+<li>
+<p>選取 <strong>List All Products</strong> 以顯示範例資料。清單會顯示範例資料中各產品的 Key、Name、Category 與 Embedding。</p>
+</li>
+<li>
+<p>選取 <strong>Find Similar Products</strong> 並輸入 <code>product:001</code> 於 <strong>Product Key：</strong> 輸入欄位中，然後選取 <strong>Search</strong>.</p>
+<p>系統會傳回相似產品清單，包含產品資訊與相似度分數。</p>
+</li>
+</ol>
+<h3 id="store-a-new-product-and-perform-a-similarity-search">儲存新產品並執行相似度搜尋</h3>
+<ol>
+<li>
+<p>選取 <strong>Store New Product</strong> ，並在表單中輸入下列資訊，然後選取 <strong>Store Product</strong>。請檢視作業結果。</p>
+<p>Product Key：</p>
+<pre><code>product:011
+</code></pre>
+<p>Embedding：</p>
+<pre><code>[0.53, 0.63, 0.58, 0.37, 0.68, 0.47, 0.73, 0.57]
+</code></pre>
+<p>Metadata：</p>
+<pre><code>product_id=011
+name=Gym Bag
+category=Sports
+</code></pre>
+<blockquote>
+<p><strong>注意：</strong> 您也可以在 <strong>Store New Product</strong> 表單中輸入該資料記錄的 product key，並變更其他欄位，以編輯任何資料記錄。</p>
+</blockquote>
+</li>
+<li>
+<p>選取 <strong>Find Similar Products</strong> 並輸入 <code>product:009</code> 於 <strong>Product Key：</strong> 輸入欄位中，然後選取 <strong>Search</strong>.</p>
+<p>檢視輸出，您會發現 Gym Bag 現在成為與 Premium Backpack 最相似的產品。</p>
+</li>
+</ol>
+<h2 id="clean-up-resources">清除資源</h2>
+<p>現在您已完成此練習，應刪除所建立的雲端資源，以避免不必要的資源使用。</p>
+<ol>
+<li>
+<p>在 VS Code 終端機中執行下列命令以刪除資源群組及其中所有資源。將 <strong>&lt;rg-name&gt;</strong> 替換為您在本練習稍早選擇的名稱。此命令會在 Azure 中啟動背景工作來刪除資源群組。</p>
+<pre><code>az group delete --name &lt;rg-name&gt; --no-wait --yes
+</code></pre>
+</li>
+</ol>
+<blockquote>
+<p><strong>注意：</strong> 刪除資源群組會刪除其中包含的所有資源。若您為此練習選擇的是既有資源群組，則該資源群組中任何不屬於本練習範圍的既有資源也會一併刪除。</p>
+</blockquote>
+<h2 id="troubleshooting">疑難排解</h2>
+<p>如果您在完成此練習時遇到問題，請嘗試下列疑難排解步驟：</p>
+<p><strong>驗證 Azure Managed Redis 資源部署</strong></p>
+<ul>
+<li>瀏覽至 <a href="https://portal.azure.com">Azure portal</a> 並找到您的資源群組。</li>
+<li>確認 Azure Managed Redis 資源的 <strong>Provisioning State</strong> 為 <strong>Succeeded</strong>.</li>
+<li>檢查資源是否已啟用 <strong>Public network access</strong> ，且 <strong>Access keys authentication</strong> 設定為 <strong>Enabled</strong>.</li>
+</ul>
+<p><strong>檢查程式碼完整性與縮排</strong></p>
+<ul>
+<li>請確認所有程式碼區塊都已加入正確區段，且位於適當的 BEGIN/END 註解標記之間。</li>
+<li>請確認 Python 縮排一致（使用空格而非定位字元），且所有程式碼在函式內都正確對齊。</li>
+<li>請確認指定區段之外的程式碼未被意外刪除或修改。</li>
+</ul>
+<p><strong>驗證環境變數</strong></p>
+<ul>
+<li>Check that the <em>.env</em> 檔案存在於專案資料夾中，且包含有效的 <strong>REDIS_HOST</strong> and <strong>REDIS_KEY</strong> 值。</li>
+<li>請確認 <em>.env</em> 檔案位於專案根目錄。</li>
+</ul>
+<p><strong>檢查 Python 環境與相依性</strong></p>
+<ul>
+<li>請確認在執行應用程式之前已啟用虛擬環境。</li>
+<li>請確認來自 <em>requirements.txt</em> 的所有套件都已透過執行 <strong>pip list</strong>.</li>
+</ul>
+</article>
+</main>
+</div>
+<footer class="fixed-bottom d-print-none">
+<nav class="navbar navbar-light bg-light d-flex justify-content-around">
+<span class="navbar-text">
+                © 2025 Microsoft  | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=521839">Privacy </a> | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=2259814">Consumer Health Privacy </a> | 
+                  <a href="https://go.microsoft.com/fwlink/?LinkID=206977">Terms of Use </a> | 
+                  <a href="https://www.microsoft.com/trademarks">Trademarks </a> | 
+                <i aria-hidden="true" class="fa fa-github"></i>
+<a class="ml-2" href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank">
+                    Source
+                </a>
+</span>
+</nav>
+</footer>
+<script crossorigin="anonymous" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script src="/mslearn-azure-ai/assets/js/script.js?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47"></script>
+</body>
+</html>

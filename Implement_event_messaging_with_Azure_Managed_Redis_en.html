@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>
+            Publish and subscribe to events in Azure Managed Redis | 
+            
+            Develop AI Cloud Solutions on Microsoft Azure
+        </title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/vs.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+        <link rel="stylesheet" href="/mslearn-azure-ai/assets/css/style.css?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47">
+    </head>
+    <body data-spy="scroll" data-target="#linksMenu">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-gray">
+        <div class="container d-flex justify-content-between">
+            <!-- <img src="https://github.com/MicrosoftLearning/Jekyll-Theme/raw/master/assets/microsoft-gray.png" alt="Microsoft logo" style="width:100px;height:21px;"/>-->
+            <span class="my-1 title text-black">Develop AI Cloud Solutions on Microsoft Azure</span>
+            <span class="ml-2">
+                <a href="https://microsoftlearning.github.io/mslearn-azure-ai" class="d-flex align-items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-house-door-fill" viewBox="0 0 16 16">
+                        <path
+                            d="M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5" />
+                    </svg>
+                    &nbsp;Home
+                </a>
+            </span>
+        </div>
+        <!--
+        <div class="container d-flex justify-content-between">
+            <a class="my-1 title text-azure text-uppercase" href="https://microsoftlearning.github.io/mslearn-azure-ai">
+                Develop AI Cloud Solutions on Microsoft Azure
+            </a>
+            <a href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank" class="btn btn-sm btn-outline-secondary text-light">
+                <i class="fa fa-github" aria-hidden="true"></i>
+                <span class="ml-2">GitHub</span>
+            </a>
+        </div>
+        -->
+    </nav>
+    <hr color-"gray"/>
+    <div class="container">
+        <main class="row extra-padding">
+            <aside class="col-sm-2">       
+                <nav id="linksMenu" class="toc sticky-top">
+                    <ul class="nav navbar-nav flex-column">
+                    </ul>
+                </nav>         
+            </aside>
+            <hr class="" />
+            <article class="col-sm-10 mb-5">
+                <h1 id="publish-and-subscribe-to-events-in-azure-managed-redis">Publish and subscribe to events in Azure Managed Redis</h1>
+<p>In this exercise, you create an Azure Managed Redis resource and complete the code for a console-based publisher and a subscriber app. The publisher app sends event messages to Redis channels, while the subscriber app listens for those messages using a graphical interface built with <strong>tkinter</strong>. You implement core pub/sub patterns including direct channel subscriptions, wildcard pattern matching, message formatting, and background message listening.</p>
+<p>Tasks performed in this exercise:</p>
+<ul>
+<li>Download the project starter files</li>
+<li>Create an Azure Managed Redis resource</li>
+<li>Add code to complete both the publisher and subscriber apps</li>
+<li>Run the publisher and subscriber apps to send and receive messages</li>
+</ul>
+<p>This exercise takes approximately <strong>30</strong> minutes to complete.</p>
+<h2 id="before-you-start">Before you start</h2>
+<p>To complete the exercise, you need:</p>
+<ul>
+<li>An Azure subscription. If you don't already have one, you can <a href="https://azure.microsoft.com/">sign up for one</a>.</li>
+<li><a href="https://code.visualstudio.com/">Visual Studio Code</a> on one of the <a href="https://code.visualstudio.com/docs/supporting/requirements#_platforms">supported platforms</a>.</li>
+<li><a href="https://www.python.org/downloads/">Python 3.12</a> or greater.</li>
+<li>The latest version of the <a href="https://learn.microsoft.com/cli/azure/install-azure-cli">Azure CLI</a>.</li>
+<li>The Azure CLI <strong>redisenterprise</strong> extension. You can install it by running the <strong>az extension add --name redisenterprise</strong> command.</li>
+</ul>
+<h2 id="download-project-starter-files-and-deploy-azure-managed-redis">Download project starter files and deploy Azure Managed Redis</h2>
+<p>In this section you download the starter files for the console app and use a script to initialize the deployment of Azure Managed Redis to your subscription. The Azure Managed Redis deployment takes 5-10 minutes to complete.</p>
+<ol>
+<li>
+<p>Open a browser and enter the following URL to download the starter file. The file will be saved in your default download location.</p>
+<pre><code>https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/amr-pub-sub-python.zip
+</code></pre></li>
+<li>
+<p>Copy, or move, the file to a location in your system where you want to work on the project. Then unzip the file into a folder.</p>
+</li>
+<li>
+<p>Launch Visual Studio Code (VS Code) and select <strong>File &gt; Open Folder...</strong> in the menu, then choose the folder containing the project files.</p>
+</li>
+<li>
+<p>The project contains deployment scripts for both Bash (<em>azdeploy.sh</em>) and PowerShell (<em>azdeploy.ps1</em>). Open the appropriate file for your environment and change the two values at the top of script to meet your needs, then save your changes. <strong>Note:</strong> Do not change anything else in the script.</p>
+<pre><code>&quot;&lt;your-resource-group-name&gt;&quot; # Resource Group name
+&quot;&lt;your-azure-region&gt;&quot; # Azure region for the resources
+</code></pre></li>
+<li>
+<p>In the menu bar select <strong>Terminal &gt; New Terminal</strong> to open a terminal window in VS Code.</p>
+</li>
+<li>
+<p>Run the following command to login to your Azure account. Answer the prompts to select your Azure account and subscription for the exercise.</p>
+<pre><code>az login
+</code></pre></li>
+<li>
+<p>Run the following command to ensure your subscription has the necessary resource provider for Azure Managed Redis.</p>
+<pre><code>az provider register --namespace Microsoft.Cache
+</code></pre></li>
+<li>
+<p>Run the following command to install the <strong>redisenterprise</strong> extension for Azure CLI.</p>
+<pre><code>az extension add --name redisenterprise
+</code></pre></li>
+<li>
+<p>Run the appropriate command in the terminal to launch the script.</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>Note:</strong> If PowerShell blocks the script because it is not digitally signed, run the following command in the same terminal session, then run the deployment script again. This command changes the execution policy only for the current PowerShell process.</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>When the script is running, enter <strong>1</strong> to launch the <strong>1. Create Azure Managed Redis resource</strong> option.</p>
+<p>This option creates the resource group if it doesn't already exist, and starts a deployment of Azure Managed Redis. The process is completed as a background task in Azure.</p>
+</li>
+<li>
+<p>After the following messages appear in the console, select <strong>Enter</strong> to return to the menu and then select <strong>4</strong> to exit the script. You run the script again later to check on the deployment status and also to create the <em>.env</em> file for the project.</p>
+<p><em>The Azure Managed Redis resource is being created and takes 5-10 minutes to complete.</em></p>
+<p><em>You can check the deployment status from the menu later in the exercise.</em></p>
+</li>
+</ol>
+<h2 id="configure-the-python-environment">Configure the Python environment</h2>
+<p>In this section, you create the Python environment and install the dependencies.</p>
+<ol>
+<li>
+<p>Run the following command in the VS Code terminal to create the Python environment.</p>
+<pre><code>python -m venv .venv
+</code></pre></li>
+<li>
+<p>Run the following command to activate the Python environment. <strong>Note:</strong> On Linux/macOS, use the Bash command. On Windows, use the PowerShell command. If using Git Bash on Windows, use <strong>source .venv/Scripts/activate</strong>.</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> .venv/bin/activate
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">\.venv\Scripts\Activate.ps1</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>Run the following command in the VS Code terminal to install the dependencies.</p>
+<pre><code>pip install -r requirements.txt
+</code></pre></li>
+</ol>
+<h2 id="complete-the-publisher-app">Complete the publisher app</h2>
+<p>In this section you add code to the <em>publisher.py</em> script to complete the console app. You run the app later in the exercise after you complete the <em>subscriber.py</em> script and create the <em>.env</em> file.</p>
+<ol>
+<li>Open the <em>publisher.py</em> file to begin adding code.</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> The code blocks you add to the application should align with the comment for that section of the code.</p>
+</blockquote>
+<h3 id="add-the-client-connection">Add the client connection</h3>
+<p>In this section, you add code to establish a connection to Azure Managed Redis using the redis-py library. The code retrieves connection credentials from environment variables and creates a Redis client instance configured for secure SSL communication.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN CONNECTION CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">connect_to_redis</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">:</span>
+    <span class="s">"""Establish connection to Azure Managed Redis using SSL encryption and authentication"""</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">redis_host</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_HOST"</span><span class="p">)</span>
+        <span class="n">redis_key</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">"REDIS_KEY"</span><span class="p">)</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">(</span>
+            <span class="n">host</span><span class="o">=</span><span class="n">redis_host</span><span class="p">,</span>
+            <span class="n">port</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+            <span class="n">ssl</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="n">decode_responses</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="n">password</span><span class="o">=</span><span class="n">redis_key</span><span class="p">,</span>
+            <span class="n">socket_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="n">socket_connect_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Test connection
+</span>        <span class="n">r</span><span class="p">.</span><span class="n">ping</span><span class="p">()</span>  <span class="c1"># Verify Redis connectivity
+</span>        <span class="k">return</span> <span class="n">r</span>
+
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="nb">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Connection error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Check if Redis host and port are correct, and ensure network connectivity"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">redis</span><span class="p">.</span><span class="n">AuthenticationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Authentication error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">"Make sure the access key is correct"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Unexpected error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="n">sys</span><span class="p">.</span><span class="nb">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes.</p>
+</li>
+</ol>
+<h3 id="add-the-publish-message-code">Add the publish message code</h3>
+<p>In this section, you add code to publish event messages to specific Redis channels using the <strong>publish()</strong> method. The publisher sends JSON-formatted messages containing event data such as order information. Each call to <strong>publish()</strong> returns the number of active subscribers that received the message, allowing you to verify the message was delivered. This is the core of the pub/sub pattern where the publisher doesn't need to know about individual subscribers.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN PUBLISH MESSAGE CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">publish_order_created</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="s">"""Publish an order created event using r.publish() to the 'orders:created' channel"""</span>
+    <span class="n">clear_screen</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Publishing: Order Created Event"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="n">order_data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">"event"</span><span class="p">:</span> <span class="s">"order_created"</span><span class="p">,</span>
+        <span class="s">"order_id"</span><span class="p">:</span> <span class="sa">f</span><span class="s">"ORD-</span><span class="si">{</span><span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">'%Y%m%d%H%M%S'</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">,</span>
+        <span class="s">"customer"</span><span class="p">:</span> <span class="s">"Jane Doe"</span><span class="p">,</span>
+        <span class="s">"total"</span><span class="p">:</span> <span class="mf">129.99</span><span class="p">,</span>
+        <span class="s">"timestamp"</span><span class="p">:</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+    <span class="n">channel</span> <span class="o">=</span> <span class="s">"orders:created"</span>
+
+    <span class="c1"># Publish message and get subscriber count
+</span>    <span class="n">subscribers</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">publish</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>  <span class="c1"># Send message to channel, returns number of subscribers that received it
+</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[&gt;] Published to channel: '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[#] Active subscribers: </span><span class="si">{</span><span class="n">subscribers</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[i] Message content:"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">order_data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="nb">input</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">[+] Press Enter to continue..."</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes.</p>
+</li>
+</ol>
+<h3 id="add-the-broadcast-message-code">Add the broadcast message code</h3>
+<p>In this section, you add code to broadcast the same message to multiple channels simultaneously using a loop with <strong>publish()</strong>. Broadcasting is useful for system-wide announcements or events that need to reach subscribers across different channels. This demonstrates the one-to-many messaging capability of pub/sub, where a single message can efficiently reach all interested subscribers across multiple channels in real-time.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN BROADCAST CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">broadcast_to_all</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">redis</span><span class="p">.</span><span class="n">Redis</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="s">"""Broadcast a message to all channels using r.publish() in a loop for multi-channel delivery"""</span>
+    <span class="n">clear_screen</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"Broadcasting: System Announcement"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="n">announcement</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">"event"</span><span class="p">:</span> <span class="s">"system_announcement"</span><span class="p">,</span>
+        <span class="s">"message"</span><span class="p">:</span> <span class="s">"System maintenance scheduled for 2 AM"</span><span class="p">,</span>
+        <span class="s">"priority"</span><span class="p">:</span> <span class="s">"high"</span><span class="p">,</span>
+        <span class="s">"timestamp"</span><span class="p">:</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="s">"orders:created"</span><span class="p">,</span> <span class="s">"orders:shipped"</span><span class="p">,</span> <span class="s">"inventory:alerts"</span><span class="p">,</span> <span class="s">"notifications"</span><span class="p">]</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">announcement</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[&gt;] Broadcasting to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="s"> channels..."</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"Channels: </span><span class="si">{</span><span class="s">', '</span><span class="p">.</span><span class="n">join</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+
+    <span class="n">total_subscribers</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">publish</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>  <span class="c1"># Send same message to multiple channels
+</span>        <span class="n">total_subscribers</span> <span class="o">+=</span> <span class="n">count</span>
+        <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"  - </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s"> subscriber(s)"</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[#] Total subscribers reached: </span><span class="si">{</span><span class="n">total_subscribers</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"</span><span class="se">\n</span><span class="s">[i] Message content:"</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">announcement</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="nb">input</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">[+] Press Enter to continue..."</span><span class="p">)</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes.</p>
+</li>
+</ol>
+<h3 id="review-the-code">Review the code</h3>
+<p>Take a few minutes to review all of the code in the application.</p>
+<h2 id="complete-the-subscriber-app">Complete the subscriber app</h2>
+<p>In this section you add code to the <em>subscriber.py</em> script to complete the app. You run the app later in the exercise, after you confirm the Azure Managed Redis resource is fully deployed and create the <strong>env</strong> file.</p>
+<ol>
+<li>Open the <em>subscriber.py</em> file to begin adding code.</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> The code blocks you add to the application should align with the comment for that section of the code.</p>
+</blockquote>
+<h3 id="add-message-formatting-code">Add message formatting code</h3>
+<p>In this section, you add code to format incoming pub/sub messages for display in the subscriber application. The <strong>format_message_gui()</strong> function parses JSON payloads from published messages and extracts relevant fields based on the event type. This function handles both standard channel messages and pattern-matched messages, providing a consistent and readable display format to understand what data is being transmitted through the pub/sub system.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN MESSAGE FORMATTING CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">format_message_gui</span><span class="p">(</span><span class="n">message_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Format message data for GUI display, parsing JSON payload and extracting relevant fields"""</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">"%H:%M:%S"</span><span class="p">)</span>
+    <span class="n">channel</span> <span class="o">=</span> <span class="n">message_data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'channel'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message_data</span><span class="p">[</span><span class="s">'data'</span><span class="p">])</span>
+        <span class="n">event_type</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'event'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+
+        <span class="n">formatted</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Message on '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'</span><span class="se">\n</span><span class="s">"</span>
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'─'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Event: </span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+
+        <span class="c1"># Display relevant fields based on event type
+</span>        <span class="k">if</span> <span class="s">'order_id'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Order ID: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'order_id'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'customer'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Customer: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'customer'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'total'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Total: $</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'total'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'tracking_number'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Tracking: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'tracking_number'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'product_name'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Product: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'product_name'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'current_stock'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Stock Level: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'current_stock'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">if</span> <span class="s">'message'</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Message: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s">'message'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+
+        <span class="n">formatted</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'─'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+        <span class="k">return</span> <span class="n">formatted</span>
+
+    <span class="k">except</span> <span class="n">json</span><span class="p">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">message_data</span><span class="p">[</span><span class="s">'data'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes</p>
+</li>
+</ol>
+<h3 id="add-the-message-listener-code">Add the message listener code</h3>
+<p>In this section, you add code for the background listener thread that continuously monitors subscribed channels for incoming messages. The <strong>listen_messages()</strong> method uses the blocking <strong>pubsub.listen()</strong> iterator to receive messages as they are published. This demonstrates how subscribers passively wait for messages and handle different message types (direct channel messages vs. pattern-matched messages). The listener runs in a background thread to avoid blocking the main application while still receiving real-time message updates.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN MESSAGE LISTENER CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">listen_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="s">"""Background thread to listen for messages using pubsub.listen() blocking iterator"""</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">listener_active</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">listen</span><span class="p">():</span>  <span class="c1"># Listen for published messages (blocking)
+</span>            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="p">.</span><span class="n">listening</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s">'type'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'message'</span><span class="p">:</span>
+                <span class="n">formatted</span> <span class="o">=</span> <span class="n">format_message_gui</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="n">formatted</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="s">'type'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'pmessage'</span><span class="p">:</span>
+                <span class="c1"># Pattern-based subscription
+</span>                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="s">"%H:%M:%S"</span><span class="p">)</span>
+                <span class="n">pattern</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="s">'pattern'</span><span class="p">]</span>
+                <span class="n">channel</span> <span class="o">=</span> <span class="n">message</span><span class="p">[</span><span class="s">'channel'</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="p">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s">'data'</span><span class="p">])</span>
+                    <span class="n">event_type</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'event'</span><span class="p">,</span> <span class="s">'unknown'</span><span class="p">)</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Pattern '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">' matched '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'-'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Event: </span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"Full message: </span><span class="si">{</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="s">'-'</span> <span class="o">*</span> <span class="mi">50</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span>
+                    <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">json</span><span class="p">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s">"[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s">] Pattern '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">': </span><span class="si">{</span><span class="n">message</span><span class="p">[</span><span class="s">'data'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">.</span><span class="n">listening</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">.</span><span class="n">message_queue</span><span class="p">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s">"[x] Listener error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">listener_active</span> <span class="o">=</span> <span class="bp">False</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes.</p>
+</li>
+</ol>
+<h3 id="add-code-to-subscribe-to-channels">Add code to subscribe to channels</h3>
+<p>In this section, you add code to handle channel and pattern subscriptions. The <strong>subscribe_to_channel()</strong> method registers interest in a specific channel using <strong>pubsub.subscribe()</strong>, while <strong>subscribe_to_pattern()</strong> uses <strong>pubsub.psubscribe()</strong> for wildcard pattern matching (e.g., &quot;orders:*&quot;). These functions demonstrate the two main subscription strategies in Redis pub/sub: direct channel subscriptions for specific events and pattern-based subscriptions for flexibility. After subscribing, the listener is restarted to begin receiving messages on the new channels.</p>
+<ol>
+<li>
+<p>Locate the <strong># BEGIN SUBSCRIBE CHANNEL/PATTERN CODE SECTION</strong> comment and add the following code under the comment. Be sure to check for proper code alignment.</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">subscribe_to_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Subscribe to a specific channel using pubsub.subscribe() for direct messaging"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>  <span class="c1"># Subscribe to channel
+</span>        <span class="bp">self</span><span class="p">.</span><span class="n">restart_listener</span><span class="p">()</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[+] Subscribed to channel: '</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s">'"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[x] Error subscribing: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+
+<span class="k">def</span> <span class="nf">subscribe_to_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="s">"""Subscribe using a pattern with pubsub.psubscribe() for wildcard channel matching (e.g., 'orders:*')"""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="p">.</span><span class="n">pubsub</span><span class="p">.</span><span class="n">psubscribe</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>  <span class="c1"># Subscribe to pattern (e.g., 'orders:*')
+</span>        <span class="bp">self</span><span class="p">.</span><span class="n">restart_listener</span><span class="p">()</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[+] Subscribed to pattern: '</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s">'"</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"[x] Error subscribing: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span>
+</code></pre></div></div>
+</li>
+<li>
+<p>Save your changes.</p>
+</li>
+</ol>
+<h3 id="review-the-code-1">Review the code</h3>
+<p>Take a few minutes to review all of the code in the application.</p>
+<h2 id="verify-resource-deployment">Verify resource deployment</h2>
+<p>In this section you run the deployment script again to verify if the Azure Managed Redis deployment is completed, and create the <em>.env</em> file with the endpoint and access key values.</p>
+<ol>
+<li>
+<p>Run the appropriate command in the terminal to start the deployment script. If you closed the previous terminal, select <strong>Terminal &gt; New Terminal</strong> in the menu to open a new one.</p>
+<p><strong>Bash</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash azdeploy.sh
+</code></pre></div></div>
+<p><strong>PowerShell</strong></p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="n">/azdeploy.ps1</span><span class="w">
+</span></code></pre></div></div>
+<blockquote>
+<p><strong>Note:</strong> If PowerShell blocks the script because it is not digitally signed, run the following command in the same terminal session, then run the deployment script again. This command changes the execution policy only for the current PowerShell process.</p>
+</blockquote>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Set-ExecutionPolicy</span><span class="w"> </span><span class="nt">-Scope</span><span class="w"> </span><span class="nx">Process</span><span class="w"> </span><span class="nt">-ExecutionPolicy</span><span class="w"> </span><span class="nx">Bypass</span><span class="w">
+</span></code></pre></div></div>
+</li>
+<li>
+<p>When the deployment menu appears, enter <strong>2</strong> to run the <strong>2. Check deployment status</strong> option. If the status <strong>Successful</strong> returned proceed to the next step. If not, then wait a few minutes and try the option again.</p>
+</li>
+<li>
+<p>After the deployment is complete, enter <strong>3</strong> to run the <strong>3. Create database and retrieve endpoint and access key</strong> option. This creates the database, enables access key authentication, and retrieves the endpoint and access key. It then creates the <em>.env</em> file with those values.</p>
+</li>
+<li>
+<p>Review the <em>.env</em> file to verify the values are present, then enter <strong>4</strong> to exit the deployment script.</p>
+</li>
+</ol>
+<h2 id="run-the-apps">Run the apps</h2>
+<p>In this section, you run the completed applications to send and receive messages. Both apps need to run at the same time, so you need to open two terminals. Both apps are menu-driven, and the <em>subscriber.py</em> app uses <strong>tkinter</strong> to create a GUI so you can more easily view messages and manage subscriptions.</p>
+<h3 id="open-two-terminals">Open two terminals</h3>
+<p>You need to ensure the Python environment is running in both terminals. Refer to the commands from earlier in the exercise to activate the environment if needed.</p>
+<ol>
+<li>
+<p>If you don't have a terminal open, select <strong>Terminal &gt; New Terminal</strong> in the VS Code menu bar. Verify you are in the root folder of the project, and activate the Python environment if needed. This terminal is named <strong>Terminal 1</strong> in the rest of the exercise.</p>
+</li>
+<li>
+<p>Open a second terminal by selecting <strong>Ctrl + Shift + P</strong> to bring up the VS Code commands and enter <strong>Terminal: New Terminal Window</strong>. This will open a terminal in a new window that you can reposition. Verify you are in the root folder of the project, and activate the Python environment if needed. This terminal is named <strong>Terminal 2</strong> in the rest of the exercise.</p>
+</li>
+</ol>
+<h3 id="launch-the-apps">Launch the apps</h3>
+<ol>
+<li>
+<p>Run the following command in <strong>Terminal 2</strong> to start the publisher app. After the app connects to Redis, press <strong>Enter</strong> to display the menu. Refer to the commands from earlier in the exercise to activate the environment, if needed, before running the command.</p>
+<pre><code>python publisher.py
+</code></pre></li>
+<li>
+<p>Run the following command in <strong>Terminal 1</strong> to start the subscriber app. The app will launch a new window with a GUI created with <strong>tkinter</strong>. Refer to the commands from earlier in the exercise to activate the environment, if needed, before running the command.</p>
+<pre><code>python subscriber.py
+</code></pre></li>
+<li>
+<p>Position both of the applications so they run side-by-side.</p>
+<p><img src="/mslearn-azure-ai/instructions/azure-managed-redis/media/apps-side-by-side.png" alt="Screenshot of the apps running side-by-side" /></p>
+</li>
+</ol>
+<h3 id="send-and-receive-messages">Send and receive messages</h3>
+<p>You need to first subscribe to a channel before you can receive messages.</p>
+<ol>
+<li>
+<p>In the subscriber app, select <strong>Subscribe to Channel</strong>. Enter <strong>orders:created</strong> in the channel name input box and select <strong>Subscribe</strong>.</p>
+<p>You should see a <em>Subscribed to channel: 'orders:created'</em> message  in the <strong>Received Messages</strong> area. Next you publish a message.</p>
+</li>
+<li>
+<p>In the publisher app, enter <strong>1</strong> to publish an order created event. You should see an event was published successfully to the channel.</p>
+<pre><code>[&gt;] Published to channel: 'orders:created'
+[#] Active subscribers: 1
+
+[i] Message content:
+{
+  &quot;event&quot;: &quot;order_created&quot;,
+  &quot;order_id&quot;: &quot;ORD-20251120123114&quot;,
+  &quot;customer&quot;: &quot;Jane Doe&quot;,
+  &quot;total&quot;: 129.99,
+  &quot;timestamp&quot;: &quot;2025-11-20T12:31:14.906797&quot;
+}
+</code></pre>
+<p>The message should appear in the <strong>Received Messages</strong> section of the subscriber app.</p>
+<pre><code>[12:31:14] Message on 'orders:created'
+──────────────────────────────────────────────────
+Event: order_created
+Order ID: ORD-20251120123114
+Customer: Jane Doe
+Total: $129.99
+──────────────────────────────────────────────────
+</code></pre></li>
+<li>
+<p>In the publisher app, enter <strong>2</strong> to publish an <strong>Order Shipped</strong> event. The event will be sent, but it will not appear in the subscriber app because you only subscribed to the <strong>orders:created</strong> channel.</p>
+</li>
+</ol>
+<h3 id="experiment-with-other-subscriptionpublishing-options">Experiment with other subscription/publishing options</h3>
+<p>Take some time to experiment subscribing and publishing messages to different channels. Following is a table with details on each of the subscriber options:</p>
+<table>
+<thead>
+<tr>
+<th>Subscriber Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscribe to Channel</td>
+<td>Subscribes to a single channel. The channel options are listed in the dialog box.</td>
+</tr>
+<tr>
+<td>Subscribe with Pattern</td>
+<td>Subscribe to multiple channels. For example, subscribing with the <strong>orders:</strong>* pattern subscribes to all <strong>orders</strong> channels.</td>
+</tr>
+<tr>
+<td>Unsubscribe from Channel</td>
+<td>Unsubscribe from a single channel. Note: you can't unsubscribe using a pattern using this option.</td>
+</tr>
+<tr>
+<td>Unsubscribe All</td>
+<td>Unsubscribe from all channels, including pattern subscriptions.</td>
+</tr>
+<tr>
+<td>View Active Subscriptions</td>
+<td>Lists all of the subscribed channels, including pattern subscriptions.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="clean-up-resources">Clean up resources</h2>
+<p>Now that you finished the exercise, you should delete the cloud resources you created to avoid unnecessary resource usage.</p>
+<ol>
+<li>
+<p>Run the following command in the VS Code terminal to delete the resource group, and all resources in the group. Replace <strong>&lt;rg-name&gt;</strong> with the name you choose earlier in the exercise. The command will launch a background task in Azure to delete the resource group.</p>
+<pre><code>az group delete --name &lt;rg-name&gt; --no-wait --yes
+</code></pre></li>
+</ol>
+<blockquote>
+<p><strong>CAUTION:</strong> Deleting a resource group deletes all resources contained within it. If you chose an existing resource group for this exercise, any existing resources outside the scope of this exercise will also be deleted.</p>
+</blockquote>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>If you encounter issues while completing this exercise, try the following troubleshooting steps:</p>
+<p><strong>Verify Azure Managed Redis resource deployment</strong></p>
+<ul>
+<li>Navigate to the <a href="https://portal.azure.com">Azure portal</a> and locate your resource group.</li>
+<li>Confirm that the Azure Managed Redis resource shows a <strong>Provisioning State</strong> of <strong>Succeeded</strong>.</li>
+<li>Check that the resource has <strong>Public network access</strong> enabled and <strong>Access keys authentication</strong> set to <strong>Enabled</strong>.</li>
+</ul>
+<p><strong>Check code completeness and indentation</strong></p>
+<ul>
+<li>Ensure all code blocks were added to the correct sections and between the appropriate BEGIN/END comment markers.</li>
+<li>Verify that Python indentation is consistent (use spaces, not tabs) and that all code aligns properly within functions.</li>
+<li>Confirm that no code was accidentally removed or modified outside the designated sections.</li>
+</ul>
+<p><strong>Verify environment variables</strong></p>
+<ul>
+<li>Check that the <em>.env</em> file exists in the project folder and contains valid <strong>REDIS_HOST</strong> and <strong>REDIS_KEY</strong> values.</li>
+<li>Ensure the <em>.env</em> file is in the root of the project.</li>
+</ul>
+<p><strong>Check Python environment and dependencies</strong></p>
+<ul>
+<li>Confirm the virtual environment is activated before running the app.</li>
+<li>Verify that all packages from <em>requirements.txt</em> were installed successfully by running <strong>pip list</strong>.</li>
+</ul>
+
+            </article>
+        </main>
+    </div>
+    <footer class="fixed-bottom d-print-none">
+        <nav class="navbar navbar-light bg-light d-flex justify-content-around">
+            <span class="navbar-text">
+                &copy; 2025 Microsoft &nbsp;|&nbsp;
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=521839">Privacy </a>&nbsp;|&nbsp;
+                  <a href="https://go.microsoft.com/fwlink/?LinkId=2259814">Consumer Health Privacy </a>&nbsp;|&nbsp;
+                  <a href="https://go.microsoft.com/fwlink/?LinkID=206977">Terms of Use </a>&nbsp;|&nbsp;
+                  <a href="https://www.microsoft.com/trademarks">Trademarks </a>&nbsp;|&nbsp;
+                <i class="fa fa-github" aria-hidden="true"></i>
+                <a href="https://github.com/MicrosoftLearning/mslearn-azure-ai" target="_blank" class="ml-2">
+                    Source
+                </a>
+            </span>
+        </nav>
+    </footer>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+    <script src="/mslearn-azure-ai/assets/js/script.js?v=d4d812dfca9fc73c889b0bbb87950fbb0ccafe47"></script>
+</body>
+
+</html>
